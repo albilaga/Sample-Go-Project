@@ -3,36 +3,36 @@ package product
 import (
 	"awesomeProject/internal/entity"
 	"context"
-	"fmt"
+	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/jackc/pgx/v5"
 )
 
 type Repo interface {
 	GetAll(ctx context.Context, page int, limit int) ([]entity.Product, error)
+	GetByID(ctx context.Context, id int64) (entity.Product, error)
 }
 
 type repo struct {
-	//db *sql.DB
+	db *pgx.Conn
 }
 
-func NewRepo() repo {
-	return repo{}
+func NewRepo(db *pgx.Conn) repo {
+	return repo{db: db}
 }
 
 func (r repo) GetAll(ctx context.Context, page int, limit int) ([]entity.Product, error) {
-	return []entity.Product{{
-		Name:        "pen",
-		Price:       10000,
-		Quantity:    100,
-		ImageUrl:    "https://www.example.com",
-		Description: "Bolpoint",
-		Sku:         "1430011",
-	},
-		{
-			Name:        "tv",
-			Price:       5_000_000,
-			Quantity:    100,
-			ImageUrl:    "https://www.example.com",
-			Description: "Televisi 43 inch",
-			Sku:         "143012",
-		}}, fmt.Errorf("error")
+	result := make([]entity.Product, 0)
+
+	const query = "SELECT * FROM products"
+	err := pgxscan.Select(ctx, r.db, &result, query)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r repo) GetByID(ctx context.Context, id int64) (result entity.Product, err error) {
+	const query = "SELECT * FROM products WHERE id=$1 AND name=$2"
+	err = pgxscan.Get(ctx, r.db, &result, query, id, "product A")
+	return result, err
 }
